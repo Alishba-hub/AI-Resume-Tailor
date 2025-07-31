@@ -42,64 +42,59 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
   const [isExtracting, setIsExtracting] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
-  // Load field history from localStorage on component mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedHistory = localStorage.getItem('resumeFieldHistory');
+    if (typeof window !== "undefined") {
+      const savedHistory = localStorage.getItem("resumeFieldHistory");
       if (savedHistory) {
         setFieldHistory(JSON.parse(savedHistory));
       }
     }
   }, []);
 
-  // Enhanced clean text function
   const cleanText = (text: string): string => {
     if (!text) return "";
     
     return text
-      .replace(/[\t\v\f\r]+/g, ' ')
-      .replace(/\|/g, '')
-      .replace(/ +/g, ' ')
-      .replace(/\n+/g, '\n')
-      .replace(/\r/g, '')
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-      .split('\n')
+      .replace(/[\t\v\f\r]+/g, " ")
+      .replace(/\|/g, "")
+      .replace(/ +/g, " ")
+      .replace(/\n+/g, "\n")
+      .replace(/\r/g, "")
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      .split("\n")
       .map(line => line.trim())
       .filter(line => line.length > 0)
-      .join('\n')
+      .join("\n")
       .trim()
       .replace(/"/g, "'");
   };
 
-  // Ultra-clean function for JSON output
   const ultraCleanForJSON = (text: string): string => {
     if (!text) return "";
     
     return text
-      .replace(/[\t\v\f\r\n]+/g, ' ')
-      .replace(/\|/g, '')
-      .replace(/\\/g, '')
-      .replace(/ +/g, ' ')
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      .replace(/[\t\v\f\r\n]+/g, " ")
+      .replace(/\|/g, "")
+      .replace(/\\/g, "")
+      .replace(/ +/g, " ")
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
       .replace(/"/g, "'")
       .trim();
   };
 
-  // Clean name field
   const cleanName = (text: string): string => {
     if (!text) return "";
     
-    const firstLine = text.split('\n')[0]?.trim() || "";
+    const firstLine = text.split("\n")[0]?.trim() || "";
     const cleaned = firstLine
-      .replace(/[\t\v\f\r\|"]/g, ' ')
-      .replace(/ +/g, ' ')
+      .replace(/[\t\v\f\r\|"]/g, " ")
+      .replace(/ +/g, " ")
       .trim();
     
-    const words = cleaned.split(' ').filter(word => word.length > 0);
-    return words.slice(0, 2).join(' ');
+    const words = cleaned.split(" ").filter(word => word.length > 0);
+    return words.slice(0, 2).join(" ");
   };
 
-  // Save field history to localStorage
   const saveFieldHistory = (fieldName: string, value: string) => {
     if (!value.trim()) return;
     
@@ -112,49 +107,48 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
       const filtered = updated[fieldName].filter(item => item !== value);
       updated[fieldName] = [value, ...filtered].slice(0, 5);
       
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('resumeFieldHistory', JSON.stringify(updated));
+      if (typeof window !== "undefined") {
+        localStorage.setItem("resumeFieldHistory", JSON.stringify(updated));
       }
       return updated;
     });
   };
 
-  // File extraction functions
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdfjsLib = await import("pdfjs-dist");
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
       
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       
-      let fullText = '';
+      let fullText = "";
       
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items
-          .map((item: { str?: string }) => item.str || '')
-          .join(' ');
-        fullText += pageText + '\n';
+          .map((item: { str?: string }) => item.str || "")
+          .join(" ");
+        fullText += pageText + "\n";
       }
       
       return cleanText(fullText);
     } catch (error) {
-      console.error('PDF extraction error:', error);
-      throw new Error('Failed to extract text from PDF');
+      console.error("PDF extraction error:", error);
+      throw new Error("Failed to extract text from PDF");
     }
   };
 
   const extractTextFromDOCX = async (file: File): Promise<string> => {
     try {
-      const mammoth = await import('mammoth');
+      const mammoth = await import("mammoth");
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
       return cleanText(result.value);
     } catch (error) {
-      console.error('DOCX extraction error:', error);
-      throw new Error('Failed to extract text from DOCX');
+      console.error("DOCX extraction error:", error);
+      throw new Error("Failed to extract text from DOCX");
     }
   };
 
@@ -162,9 +156,8 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     return cleanText(await file.text());
   };
 
-  // Parse extracted resume text
   const parseResumeText = (text: string) => {
-    const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
     
     const nameMatch = lines[0] ? cleanName(lines[0]) : "";
     const emailPattern = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
@@ -175,11 +168,11 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     const githubMatch = text.match(githubPattern);
     
     const extractSection = (startKeywords: string[], endKeywords: string[] = []) => {
-      const startPattern = new RegExp(`(${startKeywords.join('|')})`, 'i');
-      const endPattern = endKeywords.length > 0 ? new RegExp(`(${endKeywords.join('|')})`, 'i') : null;
+      const startPattern = new RegExp(`(${startKeywords.join("|")})`, "i");
+      const endPattern = endKeywords.length > 0 ? new RegExp(`(${endKeywords.join("|")})`, "i") : null;
       
       const startIndex = lines.findIndex(line => startPattern.test(line));
-      if (startIndex === -1) return '';
+      if (startIndex === -1) return "";
       
       let endIndex = lines.length;
       if (endPattern) {
@@ -189,7 +182,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         if (foundEndIndex !== -1) endIndex = foundEndIndex;
       }
       
-      return cleanText(lines.slice(startIndex + 1, endIndex).join('\n'));
+      return cleanText(lines.slice(startIndex + 1, endIndex).join("\n"));
     };
     
     const updates: Partial<FormData> = {};
@@ -198,27 +191,26 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     if (phoneMatch) updates.phone = cleanText(phoneMatch[0]);
     if (githubMatch) updates.github = cleanText(githubMatch[0]);
     updates.experience = extractSection(
-      ['experience', 'work experience', 'employment', 'professional experience'],
-      ['education', 'skills', 'projects', 'certifications']
+      ["experience", "work experience", "employment", "professional experience"],
+      ["education", "skills", "projects", "certifications"]
     );
     updates.education = extractSection(
-      ['education', 'educational background', 'academic background'],
-      ['experience', 'skills', 'projects', 'certifications']
+      ["education", "educational background", "academic background"],
+      ["experience", "skills", "projects", "certifications"]
     );
     updates.skills = extractSection(
-      ['skills', 'technical skills', 'technologies', 'programming languages'],
-      ['experience', 'education', 'projects', 'certifications']
+      ["skills", "technical skills", "technologies", "programming languages"],
+      ["experience", "education", "projects", "certifications"]
     );
     updates.projects = extractSection(
-      ['projects', 'personal projects', 'key projects'],
-      ['experience', 'education', 'skills', 'certifications']
+      ["projects", "personal projects", "key projects"],
+      ["experience", "education", "skills", "certifications"]
     );
 
     setForm(prev => ({ ...prev, ...updates }));
     return Object.keys(updates).length;
   };
 
-  // Event handlers
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -231,14 +223,14 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
       const fileType = file.type;
       const fileName = file.name.toLowerCase();
 
-      if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
+      if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
         extractedText = await extractTextFromPDF(file);
-      } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || fileName.endsWith('.docx')) {
+      } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith(".docx")) {
         extractedText = await extractTextFromDOCX(file);
-      } else if (fileType === 'text/plain' || fileName.endsWith('.txt')) {
+      } else if (fileType === "text/plain" || fileName.endsWith(".txt")) {
         extractedText = await extractTextFromTXT(file);
       } else {
-        throw new Error('Unsupported file format. Please upload PDF, DOCX, or TXT files.');
+        throw new Error("Unsupported file format. Please upload PDF, DOCX, or TXT files.");
       }
 
       const fieldsExtracted = parseResumeText(extractedText);
@@ -247,10 +239,10 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         : "⚠️ File uploaded but no recognizable resume fields found. Please check the file format."
       );
     } catch (error) {
-      setUploadError(`❌ ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+      setUploadError(`❌ ${error instanceof Error ? error.message : "Unknown error occurred"}`);
     } finally {
       setIsExtracting(false);
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
@@ -258,7 +250,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     const { name, value } = e.target;
     setForm(prev => ({
       ...prev,
-      [name]: name === 'name' ? cleanName(value) : value
+      [name]: name === "name" ? cleanName(value) : value
     }));
   };
 
@@ -266,7 +258,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      // Create cleaned form data
       const cleanedForm: FormData = {
         name: cleanName(form.name),
         email: ultraCleanForJSON(form.email),
@@ -280,9 +271,8 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         resumeType: form.resumeType,
       };
 
-      // Save field history
       Object.entries(form).forEach(([key, value]) => {
-        if (typeof value === 'string' && value.trim() && key !== 'resumeType') {
+        if (typeof value === "string" && value.trim() && key !== "resumeType") {
           saveFieldHistory(key, cleanText(value));
         }
       });
@@ -296,16 +286,15 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
   const handleSuggestionClick = (fieldName: keyof FormData, value: string) => {
     setForm(prev => ({
       ...prev,
-      [fieldName]: fieldName === 'name' ? cleanName(value) : value
+      [fieldName]: fieldName === "name" ? cleanName(value) : value
     }));
   };
 
-  // Render helper
   const renderField = (
     name: keyof FormData,
     label: string,
     placeholder: string,
-    type: 'input' | 'textarea' | 'email' = 'input',
+    type: "input" | "textarea" | "email" = "input",
     rows?: number,
     required: boolean = false,
     autoComplete?: string
@@ -320,7 +309,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
           {required && <span className="text-red-400 ml-1">*</span>}
         </label>
         
-        {type === 'textarea' ? (
+        {type === "textarea" ? (
           <textarea
             className="w-full bg-white/10 border border-white/20 text-white placeholder-white/50 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none hover:bg-white/15"
             name={name}
@@ -373,7 +362,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* File Upload Section */}
       <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
         <div className="flex items-start space-x-3 mb-3">
           <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
@@ -417,18 +405,17 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         
         {uploadError && (
           <div className={`mt-3 p-3 rounded-lg text-sm ${
-            uploadError.startsWith('✅') 
-              ? 'bg-green-500/20 text-green-200' 
-              : uploadError.startsWith('⚠️')
-              ? 'bg-yellow-500/20 text-yellow-200'
-              : 'bg-red-500/20 text-red-200'
+            uploadError.startsWith("✅") 
+              ? "bg-green-500/20 text-green-200" 
+              : uploadError.startsWith("⚠️")
+              ? "bg-yellow-500/20 text-yellow-200"
+              : "bg-red-500/20 text-red-200"
           }`}>
             {uploadError}
           </div>
         )}
       </div>
 
-      {/* Form Fields */}
       <div className="space-y-4">
         {renderField("name", "Full Name", "Enter your full name", "input", undefined, true, "name")}
         {renderField("email", "Email Address", "your.email@example.com", "email", undefined, false, "email")}
@@ -459,7 +446,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         </div>
       </div>
 
-      {/* Tips Section */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
         <div className="flex items-start space-x-3">
           <div className="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -472,7 +458,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
             <ul className="text-white/60 text-xs space-y-1">
               <li>• Upload your existing resume to auto-fill most fields</li>
               <li>• Only <strong className="text-white/80">Full Name</strong> is required</li>
-              <li>• Click "Previous entries" to reuse your past information</li>
+              <li>• Click &ldquo;Previous entries&rdquo; to reuse your past information</li>
               <li>• Add job description to get a tailored resume</li>
               <li>• More details = better resume quality</li>
             </ul>
@@ -480,7 +466,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         </div>
       </div>
 
-      {/* Submit Button */}
       <button
         className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         type="submit"
