@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 
+interface WebhookChoice {
+  message: {
+    content: string;
+  };
+}
+
+interface WebhookResponse {
+  choices: WebhookChoice[];
+}
+
 export async function POST(req: NextRequest) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 180_000);  
-
+  
   try {
     const body = await req.json();
-
     const webhook = "http://localhost:5678/webhook/resume_ai";
-
+    
     const response = await fetch(webhook, {
       method: "POST",
       headers: {
@@ -17,18 +26,17 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(body),
       signal: controller.signal,
     });
-
+    
     clearTimeout(timeout);
-
+    
     if (!response.ok) {
       throw new Error(`Webhook returned status ${response.status}`);
     }
-
+    
     const text = await response.text();
-
+    
     try {
-      const result = JSON.parse(text);
-      
+      const result = JSON.parse(text) as WebhookResponse[];
       
       let cleanContent = "";
       if (result && Array.isArray(result) && result.length > 0) {
@@ -38,7 +46,7 @@ export async function POST(req: NextRequest) {
         }
       }
       
-      
+      // Clean and format the content
       cleanContent = cleanContent
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')  
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')             
@@ -51,7 +59,7 @@ export async function POST(req: NextRequest) {
         .replace(/\n\s*\n/g, '\n\n')                         
         .replace(/\n/g, '<br>')                              
         .trim();
-
+        
       return NextResponse.json({ generated: cleanContent });
     } catch {
       console.error("❌ Webhook response was not JSON:", text);
@@ -60,12 +68,14 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     const message =
-      error.name === "AbortError"
+      error instanceof Error && error.name === "AbortError"
         ? "Request to webhook timed out"
-        : error.message || "Failed to post to webhook";
-
+        : error instanceof Error
+        ? error.message
+        : "Failed to post to webhook";
+        
     console.error("❌ Webhook error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
