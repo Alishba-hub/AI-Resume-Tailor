@@ -1,9 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 
-export default function ResumeForm({ onSubmit }: any) {
-  const [form, setForm] = useState({
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  github: string;
+  experience: string;
+  projects: string;
+  education: string;
+  skills: string;
+  jobDescription: string;
+  resumeType: string;
+}
+
+interface FieldHistory {
+  [key: string]: string[];
+}
+
+interface ResumeFormProps {
+  onSubmit: (formData: FormData) => Promise<void>;
+}
+
+export default function ResumeForm({ onSubmit }: ResumeFormProps) {
+  const [form, setForm] = useState<FormData>({
     name: "",
     email: "",
     phone: "",
@@ -17,83 +38,63 @@ export default function ResumeForm({ onSubmit }: any) {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fieldHistory, setFieldHistory] = useState<any>({});
+  const [fieldHistory, setFieldHistory] = useState<FieldHistory>({});
   const [isExtracting, setIsExtracting] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
   // Load field history from localStorage on component mount
   useEffect(() => {
-    const savedHistory = localStorage.getItem('resumeFieldHistory');
-    if (savedHistory) {
-      setFieldHistory(JSON.parse(savedHistory));
+    if (typeof window !== 'undefined') {
+      const savedHistory = localStorage.getItem('resumeFieldHistory');
+      if (savedHistory) {
+        setFieldHistory(JSON.parse(savedHistory));
+      }
     }
   }, []);
 
-  // Enhanced clean text function to remove ALL formatting issues
+  // Enhanced clean text function
   const cleanText = (text: string): string => {
     if (!text) return "";
     
     return text
-      // Remove all types of tabs and replace with single space
       .replace(/[\t\v\f\r]+/g, ' ')
-      // Remove pipe characters that can break JSON
       .replace(/\|/g, '')
-      // Replace multiple spaces with single space
       .replace(/ +/g, ' ')
-      // Replace multiple newlines with single newline
       .replace(/\n+/g, '\n')
-      // Remove carriage returns
       .replace(/\r/g, '')
-      // Remove other control characters
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-      // Split by newlines, trim each line, and filter empty lines
       .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)
       .join('\n')
-      // Final trim and remove any remaining problematic characters
       .trim()
-      // Remove any remaining double quotes that could break JSON
       .replace(/"/g, "'");
   };
 
-  // Ultra-clean function for JSON output - removes ALL newlines and formatting
+  // Ultra-clean function for JSON output
   const ultraCleanForJSON = (text: string): string => {
     if (!text) return "";
     
     return text
-      // Remove ALL types of whitespace characters and control characters
       .replace(/[\t\v\f\r\n]+/g, ' ')
-      // Remove pipe characters that can break JSON
       .replace(/\|/g, '')
-      // Remove backslashes that can break JSON
       .replace(/\\/g, '')
-      // Replace multiple spaces with single space
       .replace(/ +/g, ' ')
-      // Remove other control characters
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-      // Remove any remaining double quotes that could break JSON
       .replace(/"/g, "'")
-      // Remove any remaining single quotes that could break JSON
-      .replace(/'/g, "'")
-      // Final trim
       .trim();
   };
 
-  // Special function to clean name - only first two words from first line
+  // Clean name field
   const cleanName = (text: string): string => {
     if (!text) return "";
     
-    // Get first line only
     const firstLine = text.split('\n')[0]?.trim() || "";
-    
-    // Clean the line of special characters
     const cleaned = firstLine
       .replace(/[\t\v\f\r\|"]/g, ' ')
       .replace(/ +/g, ' ')
       .trim();
     
-    // Split into words and take only first two
     const words = cleaned.split(' ').filter(word => word.length > 0);
     return words.slice(0, 2).join(' ');
   };
@@ -102,27 +103,26 @@ export default function ResumeForm({ onSubmit }: any) {
   const saveFieldHistory = (fieldName: string, value: string) => {
     if (!value.trim()) return;
     
-    setFieldHistory((prev: any) => {
+    setFieldHistory((prev) => {
       const updated = { ...prev };
       if (!updated[fieldName]) {
         updated[fieldName] = [];
       }
       
-      // Remove if already exists and add to beginning
-      const filtered = updated[fieldName].filter((item: string) => item !== value);
-      updated[fieldName] = [value, ...filtered].slice(0, 5); // Keep only last 5
+      const filtered = updated[fieldName].filter(item => item !== value);
+      updated[fieldName] = [value, ...filtered].slice(0, 5);
       
-      localStorage.setItem('resumeFieldHistory', JSON.stringify(updated));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('resumeFieldHistory', JSON.stringify(updated));
+      }
       return updated;
     });
   };
 
-  // Extract text from PDF using PDF.js
+  // File extraction functions
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      
-      // Set worker source
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       
       const arrayBuffer = await file.arrayBuffer();
@@ -134,7 +134,7 @@ export default function ResumeForm({ onSubmit }: any) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items
-          .map((item: any) => item.str)
+          .map((item: { str?: string }) => item.str || '')
           .join(' ');
         fullText += pageText + '\n';
       }
@@ -146,12 +146,10 @@ export default function ResumeForm({ onSubmit }: any) {
     }
   };
 
-  // Extract text from DOCX using Mammoth.js
   const extractTextFromDOCX = async (file: File): Promise<string> => {
     try {
       const mammoth = await import('mammoth');
       const arrayBuffer = await file.arrayBuffer();
-      
       const result = await mammoth.extractRawText({ arrayBuffer });
       return cleanText(result.value);
     } catch (error) {
@@ -160,32 +158,22 @@ export default function ResumeForm({ onSubmit }: any) {
     }
   };
 
-  // Extract text from TXT files
   const extractTextFromTXT = async (file: File): Promise<string> => {
-    const text = await file.text();
-    return cleanText(text);
+    return cleanText(await file.text());
   };
 
-  // Parse extracted text and populate form fields
+  // Parse extracted resume text
   const parseResumeText = (text: string) => {
     const lines = text.split('\n').map(line => line.trim()).filter(line => line);
     
-    // Extract name (first line, first two words only)
     const nameMatch = lines[0] ? cleanName(lines[0]) : "";
-    
-    // Extract email
     const emailPattern = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
     const emailMatch = text.match(emailPattern);
-    
-    // Extract phone
     const phonePattern = /(\+?1?[-.\s]?)?(\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4})/;
     const phoneMatch = text.match(phonePattern);
-    
-    // Extract GitHub
     const githubPattern = /(https?:\/\/)?(www\.)?github\.com\/[\w-]+/i;
     const githubMatch = text.match(githubPattern);
     
-    // Extract sections based on common headers
     const extractSection = (startKeywords: string[], endKeywords: string[] = []) => {
       const startPattern = new RegExp(`(${startKeywords.join('|')})`, 'i');
       const endPattern = endKeywords.length > 0 ? new RegExp(`(${endKeywords.join('|')})`, 'i') : null;
@@ -201,49 +189,37 @@ export default function ResumeForm({ onSubmit }: any) {
         if (foundEndIndex !== -1) endIndex = foundEndIndex;
       }
       
-      const sectionText = lines.slice(startIndex + 1, endIndex).join('\n').trim();
-      return cleanText(sectionText);
+      return cleanText(lines.slice(startIndex + 1, endIndex).join('\n'));
     };
     
-    // Extract different sections
-    const experience = extractSection(
-      ['experience', 'work experience', 'employment', 'professional experience'],
-      ['education', 'skills', 'projects', 'certifications']
-    );
-    
-    const education = extractSection(
-      ['education', 'educational background', 'academic background'],
-      ['experience', 'skills', 'projects', 'certifications']
-    );
-    
-    const skills = extractSection(
-      ['skills', 'technical skills', 'technologies', 'programming languages'],
-      ['experience', 'education', 'projects', 'certifications']
-    );
-    
-    const projects = extractSection(
-      ['projects', 'personal projects', 'key projects'],
-      ['experience', 'education', 'skills', 'certifications']
-    );
-
-    // Update form with extracted data (clean each field)
-    const updates: any = {};
+    const updates: Partial<FormData> = {};
     if (nameMatch) updates.name = nameMatch;
     if (emailMatch) updates.email = cleanText(emailMatch[0]);
     if (phoneMatch) updates.phone = cleanText(phoneMatch[0]);
     if (githubMatch) updates.github = cleanText(githubMatch[0]);
-    if (experience) updates.experience = experience;
-    if (education) updates.education = education;
-    if (skills) updates.skills = skills;
-    if (projects) updates.projects = projects;
+    updates.experience = extractSection(
+      ['experience', 'work experience', 'employment', 'professional experience'],
+      ['education', 'skills', 'projects', 'certifications']
+    );
+    updates.education = extractSection(
+      ['education', 'educational background', 'academic background'],
+      ['experience', 'skills', 'projects', 'certifications']
+    );
+    updates.skills = extractSection(
+      ['skills', 'technical skills', 'technologies', 'programming languages'],
+      ['experience', 'education', 'projects', 'certifications']
+    );
+    updates.projects = extractSection(
+      ['projects', 'personal projects', 'key projects'],
+      ['experience', 'education', 'skills', 'certifications']
+    );
 
     setForm(prev => ({ ...prev, ...updates }));
-    
     return Object.keys(updates).length;
   };
 
-  // Handle file upload and extraction
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Event handlers
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -266,66 +242,45 @@ export default function ResumeForm({ onSubmit }: any) {
       }
 
       const fieldsExtracted = parseResumeText(extractedText);
-      
-      if (fieldsExtracted > 0) {
-        // Show success message
-        setUploadError(`✅ Successfully extracted ${fieldsExtracted} fields from your resume!`);
-      } else {
-        setUploadError("⚠️ File uploaded but no recognizable resume fields found. Please check the file format.");
-      }
-
-    } catch (error: any) {
-      setUploadError(`❌ ${error.message}`);
+      setUploadError(fieldsExtracted > 0
+        ? `✅ Successfully extracted ${fieldsExtracted} fields from your resume!`
+        : "⚠️ File uploaded but no recognizable resume fields found. Please check the file format."
+      );
+    } catch (error) {
+      setUploadError(`❌ ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
     } finally {
       setIsExtracting(false);
-      // Clear the file input
       event.target.value = '';
     }
   };
 
-  const handleChange = (e: any) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    // Clean the value as user types for name field
-    const cleanedValue = name === 'name' ? cleanName(value) : value;
-    setForm((prev) => ({ ...prev, [name]: cleanedValue }));
+    setForm(prev => ({
+      ...prev,
+      [name]: name === 'name' ? cleanName(value) : value
+    }));
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      // Ultra-clean all form data before submitting to ensure valid JSON
-      const cleanedForm = Object.entries(form).reduce((acc, [key, value]) => {
-        if (typeof value === 'string') {
-          // Apply special cleaning for name
-          if (key === 'name') {
-            acc[key] = cleanName(value);
-          } else {
-            // Use ultra-clean function for all other fields to remove ALL newlines
-            acc[key] = ultraCleanForJSON(value);
-          }
-        } else {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as any);
+      // Create cleaned form data
+      const cleanedForm: FormData = {
+        name: cleanName(form.name),
+        email: ultraCleanForJSON(form.email),
+        phone: ultraCleanForJSON(form.phone),
+        github: ultraCleanForJSON(form.github),
+        experience: ultraCleanForJSON(form.experience),
+        projects: ultraCleanForJSON(form.projects),
+        education: ultraCleanForJSON(form.education),
+        skills: ultraCleanForJSON(form.skills),
+        jobDescription: ultraCleanForJSON(form.jobDescription),
+        resumeType: form.resumeType,
+      };
 
-      // Final validation - ensure no problematic characters remain
-      Object.keys(cleanedForm).forEach(key => {
-        if (typeof cleanedForm[key] === 'string') {
-          // Extra safety check - remove ANY remaining problematic characters
-          cleanedForm[key] = cleanedForm[key]
-            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-            .replace(/[\n\r\t]/g, ' ')
-            .replace(/"/g, "'")
-            .replace(/\|/g, '')
-            .replace(/\\/g, '')
-            .replace(/ +/g, ' ')
-            .trim();
-        }
-      });
-
-      // Save non-empty field values to history (use regular cleanText for storage)
+      // Save field history
       Object.entries(form).forEach(([key, value]) => {
         if (typeof value === 'string' && value.trim() && key !== 'resumeType') {
           saveFieldHistory(key, cleanText(value));
@@ -338,13 +293,16 @@ export default function ResumeForm({ onSubmit }: any) {
     }
   };
 
-  const handleSuggestionClick = (fieldName: string, value: string) => {
-    const cleanedValue = fieldName === 'name' ? cleanName(value) : value; // Don't ultra-clean suggestions for UI
-    setForm((prev) => ({ ...prev, [fieldName]: cleanedValue }));
+  const handleSuggestionClick = (fieldName: keyof FormData, value: string) => {
+    setForm(prev => ({
+      ...prev,
+      [fieldName]: fieldName === 'name' ? cleanName(value) : value
+    }));
   };
 
+  // Render helper
   const renderField = (
-    name: string,
+    name: keyof FormData,
     label: string,
     placeholder: string,
     type: 'input' | 'textarea' | 'email' = 'input',
@@ -368,7 +326,7 @@ export default function ResumeForm({ onSubmit }: any) {
             name={name}
             placeholder={placeholder}
             rows={rows || 3}
-            value={form[name as keyof typeof form]}
+            value={form[name]}
             onChange={handleChange}
             required={required}
           />
@@ -378,14 +336,13 @@ export default function ResumeForm({ onSubmit }: any) {
             type={type}
             name={name}
             placeholder={placeholder}
-            value={form[name as keyof typeof form]}
+            value={form[name]}
             onChange={handleChange}
             autoComplete={autoComplete}
             required={required}
           />
         )}
         
-        {/* Suggestions dropdown */}
         {suggestions.length > 0 && (
           <div className="mt-2">
             <details className="group">
@@ -396,7 +353,7 @@ export default function ResumeForm({ onSubmit }: any) {
                 Previous entries
               </summary>
               <div className="mt-1 space-y-1 ml-4">
-                {suggestions.map((suggestion: string, index: number) => (
+                {suggestions.map((suggestion, index) => (
                   <div
                     key={index}
                     onClick={() => handleSuggestionClick(name, suggestion)}
@@ -474,21 +431,13 @@ export default function ResumeForm({ onSubmit }: any) {
       {/* Form Fields */}
       <div className="space-y-4">
         {renderField("name", "Full Name", "Enter your full name", "input", undefined, true, "name")}
-        
         {renderField("email", "Email Address", "your.email@example.com", "email", undefined, false, "email")}
-        
         {renderField("phone", "Phone Number", "(555) 123-4567", "input", undefined, false, "tel")}
-        
         {renderField("github", "GitHub Profile", "https://github.com/yourusername", "input", undefined, false, "url")}
-        
         {renderField("experience", "Professional Experience", "Describe your work experience, roles, and achievements...", "textarea", 4)}
-        
         {renderField("projects", "Projects", "List your projects, one per line or separated by commas...", "textarea", 3)}
-        
         {renderField("education", "Education Background", "Your educational qualifications, degrees, certifications...", "textarea", 3)}
-        
         {renderField("skills", "Skills", "List your skills, separated by commas (e.g., JavaScript, React, Node.js...)", "textarea", 2)}
-        
         {renderField("jobDescription", "Job Description", "Paste the job description here to tailor your resume for this specific position...", "textarea", 4)}
 
         <div>
@@ -502,10 +451,10 @@ export default function ResumeForm({ onSubmit }: any) {
             onChange={handleChange}
             className="w-full bg-white/10 border border-white/20 text-white p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all hover:bg-white/15"
           >
-            <option value="Chronological" className="bg-gray-800">Chronological</option>
-            <option value="Functional" className="bg-gray-800">Functional</option>
-            <option value="Combination" className="bg-gray-800">Combination</option>
-            <option value="Targeted" className="bg-gray-800">Targeted</option>
+            <option value="Chronological">Chronological</option>
+            <option value="Functional">Functional</option>
+            <option value="Combination">Combination</option>
+            <option value="Targeted">Targeted</option>
           </select>
         </div>
       </div>
