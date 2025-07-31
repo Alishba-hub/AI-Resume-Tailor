@@ -5,9 +5,29 @@ import { useRouter } from "next/navigation";
 import supabase from "../lib/supabase";
 import ResumeForm from "../components/ResumeForm";
 
+interface Resume {
+  id: string;
+  content: string;
+  user_id: string;
+  created_at: string;
+}
+
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  github: string;
+  experience: string;
+  projects: string;
+  education: string;
+  skills: string;
+  jobDescription: string;
+  resumeType: string;
+}
+
 export default function Dashboard() {
   const [resume, setResume] = useState("");
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<Resume[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +38,7 @@ export default function Dashboard() {
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
       try {
-        
+        // Check if user is authenticated
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -33,10 +53,11 @@ export default function Dashboard() {
           return;
         }
 
-        
+        // User is authenticated, fetch data
         setUserId(session.user.id);
         setUserEmail(session.user.email || "Unknown User");
 
+        // Fetch resume history
         const { data: resumeData } = await supabase
           .from("resumes")
           .select("*")
@@ -53,7 +74,7 @@ export default function Dashboard() {
 
     checkAuthAndFetchData();
 
-    
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
         router.push("/login");
@@ -70,8 +91,8 @@ export default function Dashboard() {
     router.push("/login");
   };
 
-  const generateResume = async (formData: any) => {
-    setResume(""); 
+  const generateResume = async (formData: FormData) => {
+    setResume(""); // Clear before new generation
     setGenerating(true);
     
     try {
@@ -85,14 +106,14 @@ export default function Dashboard() {
       const generatedContent = data.generated || data.error || "";
       setResume(generatedContent);
 
-      
+      // Save to database if user is authenticated and content was generated successfully
       if (userId && data.generated) {
         await supabase.from("resumes").insert({
           content: data.generated,
           user_id: userId,
         });
 
-        
+        // Refresh history
         const { data: newHistory } = await supabase
           .from("resumes")
           .select("*")
@@ -108,9 +129,9 @@ export default function Dashboard() {
     }
   };
 
-  
+  // Download resume as DOCX
   const downloadResume = (content: string, filename?: string) => {
-    
+    // Create a simple HTML document structure for better formatting
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -146,43 +167,6 @@ export default function Dashboard() {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-  };
-
- 
-  const extractResumeSection = (content: string, section: string) => {
-    if (!content) return "";
-    
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = content;
-    const text = tempDiv.textContent || tempDiv.innerText || "";
-    
-    
-    const lines = text.split('\n').filter(line => line.trim());
-    
-    switch(section) {
-      case 'name':
-        return lines.length > 0 ? lines[0] : "";
-      case 'contact':
-        
-        return lines.filter(line => 
-          line.includes('@') || 
-          line.includes('github') || 
-          line.includes('phone') || 
-          line.includes('address') ||
-          /\d{3}-\d{3}-\d{4}/.test(line)
-        ).join(' • ');
-      case 'experience':
-        // Look for experience-related content
-        const expStart = text.toLowerCase().indexOf('experience');
-        const skillsStart = text.toLowerCase().indexOf('skills');
-        if (expStart !== -1) {
-          const expEnd = skillsStart !== -1 ? skillsStart : text.length;
-          return text.substring(expStart, expEnd).trim();
-        }
-        return "";
-      default:
-        return text.length > 200 ? text.substring(0, 200) + "..." : text;
-    }
   };
 
   if (loading) {
@@ -261,7 +245,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          
+          {/* Generated Resume Document */}
           <div>
             <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl animate-slide-up-delay overflow-hidden">
               {/* Document Header */}
@@ -290,7 +274,7 @@ export default function Dashboard() {
                 )}
               </div>
 
-              
+              {/* Document Content - INCREASED HEIGHT HERE */}
               <div className="p-6 h-[1200px] overflow-y-auto scrollbar-thin">
                 {generating ? (
                   <div className="flex flex-col items-center justify-center h-full space-y-4">
