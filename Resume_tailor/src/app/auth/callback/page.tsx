@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from  "@supabase/ssr";
-
+import { createBrowserClient } from "@supabase/ssr";
 export default function AuthCallback() {
   const router = useRouter();
-  const supabase = createBrowserClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );  
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -16,7 +18,7 @@ export default function AuthCallback() {
         console.log("🔍 Hash:", window.location.hash);
         console.log("🔍 Search:", window.location.search);
 
-        
+        // Check for error in URL parameters first
         const urlParams = new URLSearchParams(window.location.search);
         const errorParam = urlParams.get('error');
         const errorDescription = urlParams.get('error_description');
@@ -28,12 +30,12 @@ export default function AuthCallback() {
           return;
         }
 
-        
+        // Method 1: Try using Supabase's built-in hash handling
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error("❌ Session error:", error);
-          
+          // If it's an expired link, show a friendly message
           if (error.message.includes('expired') || error.message.includes('invalid')) {
             setError("Your login link has expired. Please request a new one.");
           } else {
@@ -49,7 +51,7 @@ export default function AuthCallback() {
           return;
         }
 
-        
+        // Method 2: Manual hash parsing for magic links
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
@@ -85,7 +87,7 @@ export default function AuthCallback() {
           }
         }
 
-        
+        // If we get here, no valid session was found
         console.log("ℹ️ No valid session found, redirecting to login");
         router.push("/login?message=Please log in to continue");
 
