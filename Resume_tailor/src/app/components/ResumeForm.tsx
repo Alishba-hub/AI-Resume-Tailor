@@ -155,7 +155,10 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items
-          .map((item: any) => (item as any).str || '')
+          .map((item: unknown) => {
+            const textItem = item as { str?: string };
+            return textItem.str || '';
+          })
           .filter((str: string) => str.trim().length > 0)
           .join(' ');
         fullText += pageText + '\n';
