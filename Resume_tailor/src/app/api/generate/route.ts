@@ -48,11 +48,11 @@ export async function POST(req: NextRequest) {
       
       // Clean and format the content
       cleanContent = cleanContent
-        .replace(/\\([^]+)\\*/g, '<strong>$1</strong>')  
-        .replace(/\([^]+)\*/g, '<em>$1</em>')             
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')  
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')             
         .replace(/#{1,6}\s*([^\n]+)/g, '<h3>$1</h3>')        
-        .replace(/[\s\S]*?/g, '')                      
-        .replace(/([^]+)`/g, '<code>$1</code>')            
+        .replace(/```[\s\S]*?```/g, '')                      
+        .replace(/`([^`]+)`/g, '<code>$1</code>')            
         .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')            
         .replace(/^\s*[-*+]\s+(.+)/gm, '• $1')               
         .replace(/^\s*\d+\.\s+(.+)/gm, '$1')                 
