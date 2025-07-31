@@ -321,26 +321,24 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     setIsSubmitting(true);
     try {
       // Ultra-clean all form data before submitting to ensure valid JSON
-      const cleanedForm = Object.entries(form).reduce((acc, [key, value]) => {
-        if (typeof value === 'string') {
-          // Apply special cleaning for name
-          if (key === 'name') {
-            acc[key] = cleanName(value);
-          } else {
-            // Use ultra-clean function for all other fields to remove ALL newlines
-            acc[key] = ultraCleanForJSON(value);
-          }
-        } else {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as Record<string, string>);
+      const cleanedForm: FormData = {
+        name: cleanName(form.name),
+        email: ultraCleanForJSON(form.email),
+        phone: ultraCleanForJSON(form.phone),
+        github: ultraCleanForJSON(form.github),
+        experience: ultraCleanForJSON(form.experience),
+        projects: ultraCleanForJSON(form.projects),
+        education: ultraCleanForJSON(form.education),
+        skills: ultraCleanForJSON(form.skills),
+        jobDescription: ultraCleanForJSON(form.jobDescription),
+        resumeType: form.resumeType,
+      };
 
       // Final validation - ensure no problematic characters remain
-      Object.keys(cleanedForm).forEach(key => {
-        if (typeof cleanedForm[key] === 'string') {
+      Object.entries(cleanedForm).forEach(([key, value]) => {
+        if (typeof value === 'string') {
           // Extra safety check - remove ANY remaining problematic characters
-          cleanedForm[key] = cleanedForm[key]
+          const cleanedValue = value
             .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
             .replace(/[\n\r\t]/g, ' ')
             .replace(/"/g, "'")
@@ -348,6 +346,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
             .replace(/\\/g, '')
             .replace(/ +/g, ' ')
             .trim();
+          (cleanedForm as Record<string, string>)[key] = cleanedValue;
         }
       });
 
@@ -358,7 +357,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         }
       });
       
-      await onSubmit(cleanedForm as FormData);
+      await onSubmit(cleanedForm);
     } finally {
       setIsSubmitting(false);
     }
