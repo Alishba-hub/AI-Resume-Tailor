@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClientComponentClient } from  "@supabase/ssr";
+import { createBrowserClient } from  "@supabase/ssr";
 
 export default function AuthCallback() {
   const router = useRouter();
