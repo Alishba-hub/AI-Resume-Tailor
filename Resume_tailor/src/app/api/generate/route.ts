@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   
   try {
     const body = await req.json();
-    const webhook = "http://localhost:5678/webhook/resume_ai";
+    const webhook = "https://primary-production-2bf5.up.railway.app/webhook-test/7b1fa002-9cdf-4d2e-845f-46e2ae2c9525";
     
     const response = await fetch(webhook, {
       method: "POST",
