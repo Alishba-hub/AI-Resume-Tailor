@@ -42,7 +42,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
   const [isExtracting, setIsExtracting] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
-  // Load field history from in-memory storage on component mount
   useEffect(() => {
     setFieldHistory({});
   }, []);
@@ -103,7 +102,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
       
       const filtered = updated[fieldName].filter((item: string) => item !== value);
       updated[fieldName] = [value, ...filtered].slice(0, 5);
-      
       return updated;
     });
   };
@@ -270,7 +268,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      // Create the cleaned form data
+      // Create properly typed FormData object
       const cleanedFormData: FormData = {
         name: cleanName(form.name),
         email: ultraCleanForJSON(form.email),
@@ -284,32 +282,26 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         resumeType: form.resumeType,
       };
 
-      // Final validation - ensure no problematic characters remain
-      const finalFormData: Record<string, string> = { ...cleanedFormData };
-      
-      Object.entries(finalFormData).forEach(([key, value]) => {
-        if (typeof value === 'string') {
-          const cleanedValue = value
-            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-            .replace(/[\n\r\t]/g, ' ')
-            .replace(/"/g, "'")
-            .replace(/\|/g, '')
-            .replace(/\\/g, '')
-            .replace(/ +/g, ' ')
-            .trim();
-    
-          finalFormData[key] = cleanedValue;
-        }
-      });
+      // Apply additional cleaning if needed
+      const finalFormData: FormData = {
+        ...cleanedFormData,
+        name: cleanedFormData.name
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+          .trim(),
+        email: cleanedFormData.email
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+          .trim(),
+        // Add similar cleaning for other fields if needed
+      };
 
-      // Save non-empty field values to history
+      // Save field history
       Object.entries(form).forEach(([key, value]) => {
         if (typeof value === 'string' && value.trim() && key !== 'resumeType') {
           saveFieldHistory(key, cleanText(value));
         }
       });
       
-      await onSubmit(finalFormData as FormData);
+      await onSubmit(finalFormData);
     } finally {
       setIsSubmitting(false);
     }
