@@ -1,9 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import supabase from "../lib/supabase";
 
-export default function LoginContent() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -154,44 +154,14 @@ export default function LoginContent() {
         <div className="absolute -top-4 -left-4 w-8 h-8 bg-purple-500 rounded-full opacity-20 animate-float"></div>
         <div className="absolute -bottom-4 -right-4 w-6 h-6 bg-blue-500 rounded-full opacity-30 animate-float-delay"></div>
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes slide-up {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes bounce-gentle {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(180deg); }
-        }
-
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        .animate-fade-in { animation: fade-in 0.6s ease-out; }
-        .animate-slide-up { animation: slide-up 0.6s ease-out; }
-        .animate-slide-up-delay { animation: slide-up 0.6s ease-out 0.1s both; }
-        .animate-slide-up-delay-2 { animation: slide-up 0.6s ease-out 0.2s both; }
-        .animate-slide-up-delay-3 { animation: slide-up 0.6s ease-out 0.3s both; }
-        .animate-slide-up-delay-4 { animation: slide-up 0.6s ease-out 0.4s both; }
-        .animate-bounce-gentle { animation: bounce-gentle 2s ease-in-out infinite; }
-        .animate-float { animation: float 6s ease-in-out infinite; }
-        .animate-float-delay { animation: float 6s ease-in-out infinite 3s; }
-        .animate-spin-slow { animation: spin-slow 20s linear infinite; }
-      `}</style>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
