@@ -6,7 +6,7 @@ import { createBrowserClient } from  "@supabase/ssr";
 
 export default function AuthCallback() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
