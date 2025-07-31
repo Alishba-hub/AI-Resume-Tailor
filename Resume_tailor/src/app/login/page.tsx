@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import supabase from "../lib/supabase";
 
-export default function Login() {
+export default function LoginContent() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -11,10 +11,9 @@ export default function Login() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    
     const error = searchParams.get('error');
     const message = searchParams.get('message');
-        
+
     if (error) {
       if (error.includes('expired') || error.includes('invalid')) {
         setMessage("Your login link has expired. Please request a new one below.");
@@ -25,7 +24,6 @@ export default function Login() {
       setMessage(`${message}`);
     }
 
-    
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -33,7 +31,7 @@ export default function Login() {
         router.push("/dashboard");
       }
     };
-        
+
     checkSession();
   }, [searchParams, router]);
 
@@ -51,7 +49,6 @@ export default function Login() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
@@ -72,16 +69,13 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4 py-8">
-      
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-full animate-spin-slow"></div>
         <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-l from-blue-500/10 to-purple-500/10 rounded-full animate-pulse"></div>
       </div>
-      
+
       <div className="relative z-10 w-full max-w-md">
-        
         <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8 shadow-2xl animate-fade-in">
-          
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center animate-bounce-gentle">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -92,7 +86,6 @@ export default function Login() {
             <p className="text-white/70 animate-slide-up-delay">Sign in with your magic link</p>
           </div>
 
-          
           <div className="mb-6 animate-slide-up-delay-2">
             <div className="relative">
               <input
@@ -111,13 +104,12 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Login button */}
           <button
             onClick={handleLogin}
             disabled={loading}
             className={`w-full py-4 px-6 rounded-xl font-semibold text-white transition-all duration-300 transform animate-slide-up-delay-3 ${
-              loading 
-                ? "bg-gray-500/50 cursor-not-allowed scale-95" 
+              loading
+                ? "bg-gray-500/50 cursor-not-allowed scale-95"
                 : "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 hover:scale-105 hover:shadow-lg active:scale-95"
             }`}
           >
@@ -131,11 +123,10 @@ export default function Login() {
             )}
           </button>
 
-          {/* Message display */}
           {message && (
             <div className={`mt-6 p-4 rounded-xl backdrop-blur-sm animate-fade-in ${
               message.includes('Check your email') || message.includes('✅')
-                ? 'bg-green-500/20 border border-green-500/30 text-green-100' 
+                ? 'bg-green-500/20 border border-green-500/30 text-green-100'
                 : 'bg-red-500/20 border border-red-500/30 text-red-100'
             }`}>
               <div className="flex items-center">
@@ -153,7 +144,6 @@ export default function Login() {
             </div>
           )}
 
-          {/* Footer */}
           <div className="mt-8 text-center animate-slide-up-delay-4">
             <p className="text-white/50 text-sm">
               Secure authentication powered by magic links
@@ -161,7 +151,6 @@ export default function Login() {
           </div>
         </div>
 
-        
         <div className="absolute -top-4 -left-4 w-8 h-8 bg-purple-500 rounded-full opacity-20 animate-float"></div>
         <div className="absolute -bottom-4 -right-4 w-6 h-6 bg-blue-500 rounded-full opacity-30 animate-float-delay"></div>
       </div>
@@ -171,27 +160,27 @@ export default function Login() {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        
+
         @keyframes slide-up {
           from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        
+
         @keyframes bounce-gentle {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-10px); }
         }
-        
+
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
           50% { transform: translateY(-20px) rotate(180deg); }
         }
-        
+
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        
+
         .animate-fade-in { animation: fade-in 0.6s ease-out; }
         .animate-slide-up { animation: slide-up 0.6s ease-out; }
         .animate-slide-up-delay { animation: slide-up 0.6s ease-out 0.1s both; }
