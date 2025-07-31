@@ -169,7 +169,6 @@ export default function ResumeForm({ onSubmit }: any) {
   // Parse extracted text and populate form fields
   const parseResumeText = (text: string) => {
     const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-    const lowercaseText = text.toLowerCase();
     
     // Extract name (first line, first two words only)
     const nameMatch = lines[0] ? cleanName(lines[0]) : "";
@@ -472,6 +471,7 @@ export default function ResumeForm({ onSubmit }: any) {
         )}
       </div>
 
+      {/* Form Fields */}
       <div className="space-y-4">
         {renderField("name", "Full Name", "Enter your full name", "input", undefined, true, "name")}
         
@@ -510,6 +510,7 @@ export default function ResumeForm({ onSubmit }: any) {
         </div>
       </div>
 
+      {/* Tips Section */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
         <div className="flex items-start space-x-3">
           <div className="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -530,6 +531,7 @@ export default function ResumeForm({ onSubmit }: any) {
         </div>
       </div>
 
+      {/* Submit Button */}
       <button
         className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         type="submit"
@@ -547,7 +549,7 @@ export default function ResumeForm({ onSubmit }: any) {
             </svg>
             <span>Generate Resume</span>
           </>
-          )}
+        )}
       </button>
     </form>
   );
