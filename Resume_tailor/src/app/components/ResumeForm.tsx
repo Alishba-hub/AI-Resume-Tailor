@@ -2,8 +2,29 @@
 
 import { useState, useEffect } from "react";
 
-export default function ResumeForm({ onSubmit }: any) {
-  const [form, setForm] = useState({
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  github: string;
+  experience: string;
+  projects: string;
+  education: string;
+  skills: string;
+  jobDescription: string;
+  resumeType: string;
+}
+
+interface FieldHistory {
+  [key: string]: string[];
+}
+
+interface ResumeFormProps {
+  onSubmit: (formData: FormData) => Promise<void>;
+}
+
+export default function ResumeForm({ onSubmit }: ResumeFormProps) {
+  const [form, setForm] = useState<FormData>({
     name: "",
     email: "",
     phone: "",
@@ -17,7 +38,7 @@ export default function ResumeForm({ onSubmit }: any) {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fieldHistory, setFieldHistory] = useState<any>({});
+  const [fieldHistory, setFieldHistory] = useState<FieldHistory>({});
   const [isExtracting, setIsExtracting] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
@@ -25,7 +46,7 @@ export default function ResumeForm({ onSubmit }: any) {
   useEffect(() => {
     const savedHistory = localStorage.getItem('resumeFieldHistory');
     if (savedHistory) {
-      setFieldHistory(JSON.parse(savedHistory));
+      setFieldHistory(JSON.parse(savedHistory) as FieldHistory);
     }
   }, []);
 
@@ -102,7 +123,7 @@ export default function ResumeForm({ onSubmit }: any) {
   const saveFieldHistory = (fieldName: string, value: string) => {
     if (!value.trim()) return;
     
-    setFieldHistory((prev: any) => {
+    setFieldHistory((prev: FieldHistory) => {
       const updated = { ...prev };
       if (!updated[fieldName]) {
         updated[fieldName] = [];
@@ -134,7 +155,7 @@ export default function ResumeForm({ onSubmit }: any) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items
-          .map((item: any) => item.str)
+          .map((item: { str: string }) => item.str)
           .join(' ');
         fullText += pageText + '\n';
       }
@@ -227,7 +248,7 @@ export default function ResumeForm({ onSubmit }: any) {
     );
 
     // Update form with extracted data (clean each field)
-    const updates: any = {};
+    const updates: Partial<FormData> = {};
     if (nameMatch) updates.name = nameMatch;
     if (emailMatch) updates.email = cleanText(emailMatch[0]);
     if (phoneMatch) updates.phone = cleanText(phoneMatch[0]);
@@ -274,8 +295,9 @@ export default function ResumeForm({ onSubmit }: any) {
         setUploadError("⚠️ File uploaded but no recognizable resume fields found. Please check the file format.");
       }
 
-    } catch (error: any) {
-      setUploadError(`❌ ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error occurred';
+      setUploadError(`❌ ${message}`);
     } finally {
       setIsExtracting(false);
       // Clear the file input
@@ -283,14 +305,14 @@ export default function ResumeForm({ onSubmit }: any) {
     }
   };
 
-  const handleChange = (e: any) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     // Clean the value as user types for name field
     const cleanedValue = name === 'name' ? cleanName(value) : value;
     setForm((prev) => ({ ...prev, [name]: cleanedValue }));
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
@@ -308,7 +330,7 @@ export default function ResumeForm({ onSubmit }: any) {
           acc[key] = value;
         }
         return acc;
-      }, {} as any);
+      }, {} as Record<string, string>);
 
       // Final validation - ensure no problematic characters remain
       Object.keys(cleanedForm).forEach(key => {
@@ -332,7 +354,7 @@ export default function ResumeForm({ onSubmit }: any) {
         }
       });
       
-      await onSubmit(cleanedForm);
+      await onSubmit(cleanedForm as FormData);
     } finally {
       setIsSubmitting(false);
     }
@@ -344,7 +366,7 @@ export default function ResumeForm({ onSubmit }: any) {
   };
 
   const renderField = (
-    name: string,
+    name: keyof FormData,
     label: string,
     placeholder: string,
     type: 'input' | 'textarea' | 'email' = 'input',
@@ -368,7 +390,7 @@ export default function ResumeForm({ onSubmit }: any) {
             name={name}
             placeholder={placeholder}
             rows={rows || 3}
-            value={form[name as keyof typeof form]}
+            value={form[name]}
             onChange={handleChange}
             required={required}
           />
@@ -378,7 +400,7 @@ export default function ResumeForm({ onSubmit }: any) {
             type={type}
             name={name}
             placeholder={placeholder}
-            value={form[name as keyof typeof form]}
+            value={form[name]}
             onChange={handleChange}
             autoComplete={autoComplete}
             required={required}
@@ -523,7 +545,7 @@ export default function ResumeForm({ onSubmit }: any) {
             <ul className="text-white/60 text-xs space-y-1">
               <li>• Upload your existing resume to auto-fill most fields</li>
               <li>• Only <strong className="text-white/80">Full Name</strong> is required</li>
-              <li>• Click "Previous entries" to reuse your past information</li>
+              <li>• Click &ldquo;Previous entries&rdquo; to reuse your past information</li>
               <li>• Add job description to get a tailored resume</li>
               <li>• More details = better resume quality</li>
             </ul>
