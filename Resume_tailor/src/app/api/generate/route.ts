@@ -1,0 +1,72 @@
+import { NextRequest, NextResponse } from "next/server";
+
+export async function POST(req: NextRequest) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 180_000);  
+
+  try {
+    const body = await req.json();
+
+    const webhook = "http://localhost:5678/webhook/resume_ai";
+
+    const response = await fetch(webhook, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      throw new Error(`Webhook returned status ${response.status}`);
+    }
+
+    const text = await response.text();
+
+    try {
+      const result = JSON.parse(text);
+      
+      
+      let cleanContent = "";
+      if (result && Array.isArray(result) && result.length > 0) {
+        const firstChoice = result[0];
+        if (firstChoice.choices && firstChoice.choices.length > 0) {
+          cleanContent = firstChoice.choices[0].message.content || "";
+        }
+      }
+      
+      
+      cleanContent = cleanContent
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')  
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')             
+        .replace(/#{1,6}\s*([^\n]+)/g, '<h3>$1</h3>')        
+        .replace(/```[\s\S]*?```/g, '')                      
+        .replace(/`([^`]+)`/g, '<code>$1</code>')            
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')            
+        .replace(/^\s*[-*+]\s+(.+)/gm, '• $1')               
+        .replace(/^\s*\d+\.\s+(.+)/gm, '$1')                 
+        .replace(/\n\s*\n/g, '\n\n')                         
+        .replace(/\n/g, '<br>')                              
+        .trim();
+
+      return NextResponse.json({ generated: cleanContent });
+    } catch {
+      console.error("❌ Webhook response was not JSON:", text);
+      return NextResponse.json(
+        { error: "Invalid JSON returned from webhook" },
+        { status: 500 }
+      );
+    }
+  } catch (error: any) {
+    const message =
+      error.name === "AbortError"
+        ? "Request to webhook timed out"
+        : error.message || "Failed to post to webhook";
+
+    console.error("❌ Webhook error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
