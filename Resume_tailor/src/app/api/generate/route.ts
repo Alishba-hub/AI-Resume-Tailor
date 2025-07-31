@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     clearTimeout(timeout);
     
     if (!response.ok) {
-      throw new Error(Webhook returned status ${response.status});
+      throw new Error(`Webhook returned status ${response.status}`);
     }
     
     const text = await response.text();
