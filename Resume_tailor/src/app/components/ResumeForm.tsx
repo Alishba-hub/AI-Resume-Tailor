@@ -23,16 +23,6 @@ interface ResumeFormProps {
   onSubmit: (formData: FormData) => Promise<void>;
 }
 
-interface TextItem {
-  str: string;
-  dir: string;
-  transform: number[];
-  width: number;
-  height: number;
-  fontName: string;
-  hasEOL?: boolean;
-}
-
 export default function ResumeForm({ onSubmit }: ResumeFormProps) {
   const [form, setForm] = useState<FormData>({
     name: "",
@@ -115,34 +105,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
       }
       return updated;
     });
-  };
-
-  const extractTextFromPDF = async (file: File): Promise<string> => {
-    try {
-      const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-      
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      
-      let fullText = "";
-      
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .filter((item): item is TextItem => "str" in item)
-          .map(item => item.str)
-          .join(" ");
-        fullText += pageText + "\n";
-      }
-      
-      return cleanText(fullText);
-    } catch (error) {
-      console.error("PDF extraction error:", error);
-      throw new Error("Failed to extract text from PDF");
-    }
   };
 
   const extractTextFromDOCX = async (file: File): Promise<string> => {
@@ -228,14 +190,12 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
       const fileType = file.type;
       const fileName = file.name.toLowerCase();
 
-      if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
-        extractedText = await extractTextFromPDF(file);
-      } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith(".docx")) {
+      if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith(".docx")) {
         extractedText = await extractTextFromDOCX(file);
       } else if (fileType === "text/plain" || fileName.endsWith(".txt")) {
         extractedText = await extractTextFromTXT(file);
       } else {
-        throw new Error("Unsupported file format. Please upload PDF, DOCX, or TXT files.");
+        throw new Error("Unsupported file format. Please upload DOCX or TXT files.");
       }
 
       const fieldsExtracted = parseResumeText(extractedText);
@@ -367,7 +327,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* File Upload Section */}
       <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
         <div className="flex items-start space-x-3 mb-3">
           <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
@@ -384,7 +343,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         <label className="block">
           <input
             type="file"
-            accept=".pdf,.docx,.txt"
+            accept=".docx,.txt"
             onChange={handleFileUpload}
             className="hidden"
             disabled={isExtracting}
@@ -403,7 +362,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
                 <p className="text-white/70 text-sm">
                   <span className="font-medium">Click to upload</span> or drag and drop
                 </p>
-                <p className="text-white/50 text-xs mt-1">PDF, DOCX, or TXT files</p>
+                <p className="text-white/50 text-xs mt-1">DOCX or TXT files</p>
               </div>
             )}
           </div>
@@ -422,7 +381,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         )}
       </div>
 
-      {/* Form Fields */}
       <div className="space-y-4">
         {renderField("name", "Full Name", "Enter your full name", "input", undefined, true, "name")}
         {renderField("email", "Email Address", "your.email@example.com", "email", undefined, false, "email")}
@@ -453,7 +411,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         </div>
       </div>
 
-      {/* Tips Section */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
         <div className="flex items-start space-x-3">
           <div className="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -474,7 +431,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         </div>
       </div>
 
-      {/* Submit Button */}
       <button
         className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         type="submit"
