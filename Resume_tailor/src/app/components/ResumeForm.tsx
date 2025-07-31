@@ -335,22 +335,25 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
       };
 
       // Final validation - ensure no problematic characters remain
-      Object.entries(cleanedForm).forEach(([key, value]) => {
-        if (typeof value === 'string') {
-          // Extra safety check - remove ANY remaining problematic characters
-          const cleanedValue = value
-            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-            .replace(/[\n\r\t]/g, ' ')
-            .replace(/"/g, "'")
-            .replace(/\|/g, '')
-            .replace(/\\/g, '')
-            .replace(/ +/g, ' ')
-            .trim();
-          
-          // Fix the type assertion issue by using the proper key type
-          (cleanedForm as any)[key] = cleanedValue;
-        }
-      });
+      // First, declare the type of cleanedForm properly
+    const cleanedForm: Record<string, string> = {};
+    
+    // Then, iterate and clean each string value
+    Object.entries(cleanedForm).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        const cleanedValue = value
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // remove non-printables
+          .replace(/[\n\r\t]/g, ' ')                        // replace newlines and tabs with space
+          .replace(/"/g, "'")                               // replace double quotes with single
+          .replace(/\|/g, '')                               // remove pipe character
+          .replace(/\\/g, '')                               // remove backslashes
+          .replace(/ +/g, ' ')                              // collapse multiple spaces
+          .trim();                                          // trim leading/trailing spaces
+    
+        cleanedForm[key] = cleanedValue; // ✅ No 'as any' needed
+      }
+    });
+
 
       // Save non-empty field values to history (use regular cleanText for storage)
       Object.entries(form).forEach(([key, value]) => {
