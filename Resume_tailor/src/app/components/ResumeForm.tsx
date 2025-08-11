@@ -107,38 +107,6 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     });
   };
 
-  const extractTextFromPDF = async (file: File): Promise<string> => {
-    try {
-      // Using pdf-parse approach with pdfjs-dist
-      const pdfjsLib = await import("pdfjs-dist");
-      
-      // Set worker source
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-      
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      
-      let fullText = "";
-      
-      // Extract text from all pages
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        const page = await pdf.getPage(pageNum);
-        const textContent = await page.getTextContent();
-        
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(" ");
-        
-        fullText += pageText + "\n";
-      }
-      
-      return cleanText(fullText);
-    } catch (error) {
-      console.error("PDF extraction error:", error);
-      throw new Error("Failed to extract text from PDF");
-    }
-  };
-
   const extractTextFromDOCX = async (file: File): Promise<string> => {
     try {
       const mammoth = await import("mammoth");
@@ -148,6 +116,19 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     } catch (error) {
       console.error("DOCX extraction error:", error);
       throw new Error("Failed to extract text from DOCX");
+    }
+  };
+
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    try {
+      // Import pdf-parse dynamically for client-side usage
+      const pdfParse = (await import('pdf-parse')).default;
+      const arrayBuffer = await file.arrayBuffer();
+      const data = await pdfParse(Buffer.from(arrayBuffer));
+      return cleanText(data.text);
+    } catch (error) {
+      console.error("PDF extraction error:", error);
+      throw new Error("Failed to extract text from PDF. Please try converting to DOCX or TXT format.");
     }
   };
 
@@ -455,7 +436,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
           <div>
             <h4 className="text-white/80 text-sm font-medium mb-1">Quick Tips:</h4>
             <ul className="text-white/60 text-xs space-y-1">
-              <li>• Upload your existing resume to auto-fill most fields</li>
+              <li>• Upload your existing resume (PDF, DOCX, or TXT) to auto-fill most fields</li>
               <li>• Only <strong className="text-white/80">Full Name</strong> is required</li>
               <li>• Click &ldquo;Previous entries&rdquo; to reuse your past information</li>
               <li>• Add job description to get a tailored resume</li>
