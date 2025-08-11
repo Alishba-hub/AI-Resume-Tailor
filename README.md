@@ -2,7 +2,7 @@
 
 AI-powered web application that generates ATS-friendly, job-specific resumes using Next.js 14, n8n and Supabase.
 
-Live Demo : ai-resume-tailor-hlqg.vercel.app
+Live Demo : https://ai-resume-tailor-hlqg.vercel.app/login
 
 
 ## Features
