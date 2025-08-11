@@ -23,6 +23,16 @@ interface ResumeFormProps {
   onSubmit: (formData: FormData) => Promise<void>;
 }
 
+interface TextItem {
+  str: string;
+  dir: string;
+  transform: number[];
+  width: number;
+  height: number;
+  fontName: string;
+  hasEOL?: boolean;
+}
+
 export default function ResumeForm({ onSubmit }: ResumeFormProps) {
   const [form, setForm] = useState<FormData>({
     name: "",
@@ -107,6 +117,34 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     });
   };
 
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    try {
+      const pdfjsLib = await import("pdfjs-dist");
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      let fullText = "";
+      
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .filter((item): item is TextItem => "str" in item)
+          .map(item => item.str)
+          .join(" ");
+        fullText += pageText + "\n";
+      }
+      
+      return cleanText(fullText);
+    } catch (error) {
+      console.error("PDF extraction error:", error);
+      throw new Error("Failed to extract text from PDF");
+    }
+  };
+
   const extractTextFromDOCX = async (file: File): Promise<string> => {
     try {
       const mammoth = await import("mammoth");
@@ -119,26 +157,13 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     }
   };
 
-  const extractTextFromPDF = async (file: File): Promise<string> => {
-    try {
-      // Import pdf-parse dynamically for client-side usage
-      const pdfParse = (await import('pdf-parse')).default;
-      const arrayBuffer = await file.arrayBuffer();
-      const data = await pdfParse(Buffer.from(arrayBuffer));
-      return cleanText(data.text);
-    } catch (error) {
-      console.error("PDF extraction error:", error);
-      throw new Error("Failed to extract text from PDF. Please try converting to DOCX or TXT format.");
-    }
-  };
-
   const extractTextFromTXT = async (file: File): Promise<string> => {
     return cleanText(await file.text());
   };
 
   const parseResumeText = (text: string) => {
     const lines = text.split("\n").map(line => line.trim()).filter(line => line);
-    
+
     const nameMatch = lines[0] ? cleanName(lines[0]) : "";
     const emailPattern = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
     const emailMatch = text.match(emailPattern);
@@ -146,14 +171,14 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     const phoneMatch = text.match(phonePattern);
     const githubPattern = /(https?:\/\/)?(www\.)?github\.com\/[\w-]+/i;
     const githubMatch = text.match(githubPattern);
-    
+
     const extractSection = (startKeywords: string[], endKeywords: string[] = []) => {
       const startPattern = new RegExp(`(${startKeywords.join("|")})`, "i");
       const endPattern = endKeywords.length > 0 ? new RegExp(`(${endKeywords.join("|")})`, "i") : null;
-      
+
       const startIndex = lines.findIndex(line => startPattern.test(line));
       if (startIndex === -1) return "";
-      
+
       let endIndex = lines.length;
       if (endPattern) {
         const foundEndIndex = lines.findIndex((line, index) => 
@@ -161,10 +186,10 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         );
         if (foundEndIndex !== -1) endIndex = foundEndIndex;
       }
-      
+
       return cleanText(lines.slice(startIndex + 1, endIndex).join("\n"));
     };
-    
+
     const updates: Partial<FormData> = {};
     if (nameMatch) updates.name = nameMatch;
     if (emailMatch) updates.email = cleanText(emailMatch[0]);
@@ -206,11 +231,13 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
       if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
         extractedText = await extractTextFromPDF(file);
       } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith(".docx")) {
+      if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith(".docx")) {
         extractedText = await extractTextFromDOCX(file);
       } else if (fileType === "text/plain" || fileName.endsWith(".txt")) {
         extractedText = await extractTextFromTXT(file);
       } else {
         throw new Error("Unsupported file format. Please upload PDF, DOCX, or TXT files.");
+        throw new Error("Unsupported file format. Please upload DOCX or TXT files.");
       }
 
       const fieldsExtracted = parseResumeText(extractedText);
@@ -256,7 +283,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
           saveFieldHistory(key, cleanText(value));
         }
       });
-      
+
       await onSubmit(cleanedForm);
     } finally {
       setIsSubmitting(false);
@@ -280,7 +307,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     autoComplete?: string
   ) => {
     const suggestions = fieldHistory[name] || [];
-    
+
     return (
       <div>
         <label className="block text-white/80 text-sm font-medium mb-2">
@@ -288,7 +315,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
           {!required && <span className="text-white/50 text-xs ml-1">(Optional)</span>}
           {required && <span className="text-red-400 ml-1">*</span>}
         </label>
-        
+
         {type === "textarea" ? (
           <textarea
             className="w-full bg-white/10 border border-white/20 text-white placeholder-white/50 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none hover:bg-white/15"
@@ -311,7 +338,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
             required={required}
           />
         )}
-        
+
         {suggestions.length > 0 && (
           <div className="mt-2">
             <details className="group">
@@ -342,6 +369,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* File Upload Section */}
       <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
         <div className="flex items-start space-x-3 mb-3">
           <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
@@ -354,11 +382,12 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
             <p className="text-white/60 text-sm">Upload your resume to auto-fill the form fields</p>
           </div>
         </div>
-        
+
         <label className="block">
           <input
             type="file"
             accept=".pdf,.docx,.txt"
+            accept=".docx,.txt"
             onChange={handleFileUpload}
             className="hidden"
             disabled={isExtracting}
@@ -378,11 +407,12 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
                   <span className="font-medium">Click to upload</span> or drag and drop
                 </p>
                 <p className="text-white/50 text-xs mt-1">PDF, DOCX, or TXT files</p>
+                <p className="text-white/50 text-xs mt-1">DOCX or TXT files</p>
               </div>
             )}
           </div>
         </label>
-        
+
         {uploadError && (
           <div className={`mt-3 p-3 rounded-lg text-sm ${
             uploadError.startsWith("✅") 
@@ -396,6 +426,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         )}
       </div>
 
+      {/* Form Fields */}
       <div className="space-y-4">
         {renderField("name", "Full Name", "Enter your full name", "input", undefined, true, "name")}
         {renderField("email", "Email Address", "your.email@example.com", "email", undefined, false, "email")}
@@ -426,6 +457,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         </div>
       </div>
 
+      {/* Tips Section */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
         <div className="flex items-start space-x-3">
           <div className="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -436,7 +468,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
           <div>
             <h4 className="text-white/80 text-sm font-medium mb-1">Quick Tips:</h4>
             <ul className="text-white/60 text-xs space-y-1">
-              <li>• Upload your existing resume (PDF, DOCX, or TXT) to auto-fill most fields</li>
+              <li>• Upload your existing resume to auto-fill most fields</li>
               <li>• Only <strong className="text-white/80">Full Name</strong> is required</li>
               <li>• Click &ldquo;Previous entries&rdquo; to reuse your past information</li>
               <li>• Add job description to get a tailored resume</li>
@@ -446,6 +478,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         </div>
       </div>
 
+      {/* Submit Button */}
       <button
         className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         type="submit"
