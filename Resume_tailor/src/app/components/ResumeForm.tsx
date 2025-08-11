@@ -107,6 +107,38 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
     });
   };
 
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    try {
+      // Using pdf-parse approach with pdfjs-dist
+      const pdfjsLib = await import("pdfjs-dist");
+      
+      // Set worker source
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      let fullText = "";
+      
+      // Extract text from all pages
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(" ");
+        
+        fullText += pageText + "\n";
+      }
+      
+      return cleanText(fullText);
+    } catch (error) {
+      console.error("PDF extraction error:", error);
+      throw new Error("Failed to extract text from PDF");
+    }
+  };
+
   const extractTextFromDOCX = async (file: File): Promise<string> => {
     try {
       const mammoth = await import("mammoth");
@@ -190,12 +222,14 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
       const fileType = file.type;
       const fileName = file.name.toLowerCase();
 
-      if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith(".docx")) {
+      if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
+        extractedText = await extractTextFromPDF(file);
+      } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith(".docx")) {
         extractedText = await extractTextFromDOCX(file);
       } else if (fileType === "text/plain" || fileName.endsWith(".txt")) {
         extractedText = await extractTextFromTXT(file);
       } else {
-        throw new Error("Unsupported file format. Please upload DOCX or TXT files.");
+        throw new Error("Unsupported file format. Please upload PDF, DOCX, or TXT files.");
       }
 
       const fieldsExtracted = parseResumeText(extractedText);
@@ -343,7 +377,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
         <label className="block">
           <input
             type="file"
-            accept=".docx,.txt"
+            accept=".pdf,.docx,.txt"
             onChange={handleFileUpload}
             className="hidden"
             disabled={isExtracting}
@@ -362,7 +396,7 @@ export default function ResumeForm({ onSubmit }: ResumeFormProps) {
                 <p className="text-white/70 text-sm">
                   <span className="font-medium">Click to upload</span> or drag and drop
                 </p>
-                <p className="text-white/50 text-xs mt-1">DOCX or TXT files</p>
+                <p className="text-white/50 text-xs mt-1">PDF, DOCX, or TXT files</p>
               </div>
             )}
           </div>
