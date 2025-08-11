@@ -129,44 +129,126 @@ export default function Dashboard() {
     }
   };
 
+  // PDF generation function
+  const generatePDF = async (htmlContent: string): Promise<Uint8Array> => {
+    try {
+      const jsPDF = (await import("jspdf")).default;
+      const html2canvas = (await import("html2canvas")).default;
+      
+      // Create a temporary div with the HTML content
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlContent;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.width = '794px'; // A4 width in pixels at 96 DPI
+      tempDiv.style.padding = '40px';
+      tempDiv.style.backgroundColor = 'white';
+      tempDiv.style.fontFamily = 'Times New Roman, serif';
+      tempDiv.style.fontSize = '14px';
+      tempDiv.style.lineHeight = '1.6';
+      tempDiv.style.color = '#333';
+      
+      document.body.appendChild(tempDiv);
+      
+      // Convert HTML to canvas
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: 'white',
+        width: 794,
+      });
+      
+      document.body.removeChild(tempDiv);
+      
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+      
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+      
+      return pdf.output('arraybuffer') as Uint8Array;
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      throw new Error('Failed to generate PDF');
+    }
+  };
+
   
-  const downloadResume = (content: string, filename?: string) => {
-    
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body { font-family: 'Times New Roman', serif; line-height: 1.6; margin: 40px; color: #333; }
-          h1, h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
-          h3 { color: #34495e; margin-top: 20px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .section { margin: 20px 0; }
-          .contact-info { text-align: center; margin: 15px 0; font-size: 14px; }
-          ul { padding-left: 20px; }
-          li { margin: 5px 0; }
-          .experience-item { margin: 15px 0; }
-          .company { font-weight: bold; color: #2980b9; }
-          .position { font-style: italic; color: #7f8c8d; }
-          .date { float: right; color: #95a5a6; }
-        </style>
-      </head>
-      <body>
-        ${content}
-      </body>
-      </html>
-    `;
-    
-    const blob = new Blob([htmlContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename || `resume-${Date.now()}.doc`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+  const downloadResume = async (content: string, filename?: string, format: 'doc' | 'pdf' = 'doc') => {
+    try {
+      if (format === 'pdf') {
+        // Generate PDF
+        const pdfBuffer = await generatePDF(content);
+        const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename?.replace('.doc', '.pdf') || `resume-${Date.now()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else {
+        // Generate DOC (existing logic)
+        const htmlContent = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: 'Times New Roman', serif; line-height: 1.6; margin: 40px; color: #333; }
+              h1, h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
+              h3 { color: #34495e; margin-top: 20px; }
+              .header { text-align: center; margin-bottom: 30px; }
+              .section { margin: 20px 0; }
+              .contact-info { text-align: center; margin: 15px 0; font-size: 14px; }
+              ul { padding-left: 20px; }
+              li { margin: 5px 0; }
+              .experience-item { margin: 15px 0; }
+              .company { font-weight: bold; color: #2980b9; }
+              .position { font-style: italic; color: #7f8c8d; }
+              .date { float: right; color: #95a5a6; }
+            </style>
+          </head>
+          <body>
+            ${content}
+          </body>
+          </html>
+        `;
+        
+        const blob = new Blob([htmlContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || `resume-${Date.now()}.doc`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download resume. Please try again.');
+    }
   };
 
   if (loading) {
@@ -264,15 +346,26 @@ export default function Dashboard() {
                   </div>
                 </div>
                 {resume && !generating && (
-                  <button
-                    onClick={() => downloadResume(resume)}
-                    className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-200 px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2 text-xs sm:text-sm w-full sm:w-auto justify-center"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span>Download .doc</span>
-                  </button>
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                    <button
+                      onClick={() => downloadResume(resume, undefined, 'doc')}
+                      className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-200 px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2 text-xs sm:text-sm justify-center"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Download .doc</span>
+                    </button>
+                    <button
+                      onClick={() => downloadResume(resume, undefined, 'pdf')}
+                      className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-200 px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2 text-xs sm:text-sm justify-center"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      <span>Download .pdf</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -355,18 +448,24 @@ export default function Dashboard() {
                           <p className="text-xs sm:text-sm text-white/50">
                             Created: {new Date(r.created_at).toLocaleString()}
                           </p>
-                          <div className="flex space-x-2">
+                          <div className="flex flex-wrap gap-2">
                             <button 
                               onClick={() => setResume(r.content)}
-                              className="text-xs bg-purple-500/20 text-purple-200 px-3 py-1 rounded-lg hover:bg-purple-500/30 transition-colors flex-1 sm:flex-none"
+                              className="text-xs bg-purple-500/20 text-purple-200 px-3 py-1 rounded-lg hover:bg-purple-500/30 transition-colors"
                             >
                               Preview
                             </button>
                             <button 
-                              onClick={() => downloadResume(r.content, `resume-${new Date(r.created_at).toLocaleDateString()}.doc`)}
-                              className="text-xs bg-blue-500/20 text-blue-200 px-3 py-1 rounded-lg hover:bg-blue-500/30 transition-colors flex-1 sm:flex-none"
+                              onClick={() => downloadResume(r.content, `resume-${new Date(r.created_at).toLocaleDateString()}.doc`, 'doc')}
+                              className="text-xs bg-green-500/20 text-green-200 px-3 py-1 rounded-lg hover:bg-green-500/30 transition-colors"
                             >
-                              Download
+                              Download DOC
+                            </button>
+                            <button 
+                              onClick={() => downloadResume(r.content, `resume-${new Date(r.created_at).toLocaleDateString()}.pdf`, 'pdf')}
+                              className="text-xs bg-blue-500/20 text-blue-200 px-3 py-1 rounded-lg hover:bg-blue-500/30 transition-colors"
+                            >
+                              Download PDF
                             </button>
                           </div>
                         </div>
